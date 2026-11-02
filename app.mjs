@@ -1,10 +1,8 @@
 import { readFile, writeFile, mkdir, open, unlink } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { setTimeout as delay } from 'node:timers/promises';
 import { configuration, history, suppressions, plan, sendBatch, email } from './lib/sender.mjs';
-import { discoverPage } from './lib/discovery.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const data = join(root, 'data');
@@ -13,14 +11,19 @@ const json = async name => JSON.parse(await readFile(join(root, name), 'utf8'));
 async function main() {
   const { positionals, values } = parseArgs({ allowPositionals: true, options: {
     confirm: { type: 'boolean', default: false }, max: { type: 'string', default: '5' },
-    file: { type: 'string', default: 'sites.txt' }
+    file: { type: 'string', default: 'public-email-finder/sites.txt' }
   } });
   const [command, address] = positionals;
   if (!command || command === 'help') {
-    console.log(`Company Email Project (Node.js 22+)\n\nnode app.mjs preview\nnode app.mjs send --confirm --max 5\nnode app.mjs discover --file sites.txt\nnode app.mjs suppress person@company.com\n\nAPI key: .env, line 1. Full instructions: README.md.\nSending uses opted-in, approved contacts.json entries. Discovery writes to data/discovered.json only.`);
+    console.log(`Company Email Project (Node.js 22+)\n\nnode app.mjs preview\nnode app.mjs send --confirm --max 5\nnode app.mjs discover\nnode app.mjs suppress person@company.com\n\nAPI key: .env, line 1. Full instructions: README.md.\nDiscovery merges unapproved addresses into contacts.json.\nSending uses opted-in, approved contacts.json entries.`);
     return;
   }
   if (!['preview', 'send', 'discover', 'suppress'].includes(command)) throw new Error('Unknown command. Run node app.mjs help.');
+  if (command === 'discover') {
+    const { runScraperCli } = await import('./public-email-finder/scraper.mjs');
+    await runScraperCli(['--file', resolve(root, values.file), '--out', join(root, 'contacts.json')]);
+    return;
+  }
   await mkdir(data, { recursive: true });
   let lock;
   try {
@@ -35,28 +38,6 @@ async function main() {
       list.add(email(address));
       await writeFile(join(data, 'suppressed.json'), JSON.stringify([...list], null, 2) + '\n', { mode: 0o600 });
       console.log(`Suppressed: ${email(address)}`);
-      return;
-    }
-    if (command === 'discover') {
-      const urls = [...new Set((await readFile(join(root, values.file), 'utf8')).split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#')))];
-      if (!urls.length) { console.log('Add public HTTPS page URLs to sites.txt, one per line.'); return; }
-      if (urls.length > 100) throw new Error('Use at most 100 page URLs per discovery run.');
-      let existing = [];
-      try { existing = JSON.parse(await readFile(join(data, 'discovered.json'), 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      let failures = 0;
-      for (const [index, url] of urls.entries()) {
-        if (index) await delay(3000);
-        try {
-          const found = await discoverPage(url);
-          for (const contact of found) {
-            if (!existing.some(e => e.email === contact.email && e.source_url === contact.source_url)) existing.push(contact);
-          }
-          await writeFile(join(data, 'discovered.json'), JSON.stringify(existing, null, 2) + '\n', { mode: 0o600 });
-          console.log(`${url}: ${found.length} public address(es) found.`);
-        } catch (error) { failures++; console.error(`${url}: ${error.message}`); }
-      }
-      console.log('Results: data/discovered.json. Discovery does not establish permission to email.');
-      if (failures) process.exitCode = 1;
       return;
     }
     if (command === 'send' && !values.confirm) throw new Error('Preview first, then use send --confirm --max 5 to send real emails.');

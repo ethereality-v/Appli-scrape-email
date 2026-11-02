@@ -1,0 +1,5 @@
+results/
+results.json
+results.json.*.tmp
+node_modules/
+*.zip

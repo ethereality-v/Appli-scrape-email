@@ -1,14 +1,8 @@
 [
   {
     "email": "recipient@example.invalid",
-    "name": "Alex",
+    "name": "Example",
     "company": "Example Company",
-    "approved": false,
-    "consent": {
-      "type": "opt_in",
-      "record": "Replace with a real signup record reference",
-      "obtained_at": "",
-      "last_contacted_at": ""
-    }
+    "approved": true
   }
 ]

@@ -9,6 +9,8 @@
     "preview": "node app.mjs preview",
     "send": "node app.mjs send",
     "discover": "node app.mjs discover",
+    "scrape": "node public-email-finder/scraper.mjs",
+    "demo:integration": "node integration-demo.mjs",
     "test": "node --test"
   }
 }

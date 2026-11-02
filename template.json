@@ -1,5 +1,5 @@
 {
   "campaign_id": "company-introduction-001",
-  "subject": "A message from {{sender_company}}",
-  "body": "Hi {{name}},\n\nThanks for your interest in {{sender_company}}.\n\nReplace this paragraph with your company's email message.\n\nBest regards,\n{{sender_company}}"
+  "subject": "REPLACE WITH PRE-WRITTEN TEMPLATE",
+  "body": "REPLACE WITH PRE-WRITTEN TEMPLATE"
 }

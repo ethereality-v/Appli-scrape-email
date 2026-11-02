@@ -26,7 +26,7 @@ Official references: [account setup](https://support.smtp2go.com/hc/en-gb/articl
 
 Edit `template.json` to set your subject and message. Available variables: `{{name}}`, `{{company}}`, `{{email}}`, `{{sender_company}}`. The sender company and mailing address are appended automatically. Keep `campaign_id` the same when rerunning a campaign; an address is attempted only once per campaign. Use a new ID for a genuinely new campaign, after reviewing your recipients again.
 
-Replace the example entry in `contacts.json` with actual opted-in recipients:
+Contact entries in `contacts.json` use this format:
 
 ```json
 [
@@ -34,18 +34,23 @@ Replace the example entry in `contacts.json` with actual opted-in recipients:
     "email": "person@theircompany.com",
     "name": "Alex",
     "company": "Their Company",
-    "approved": true,
-    "consent": {
-      "type": "opt_in",
-      "record": "Reference to the actual signup or permission record",
-      "obtained_at": "YYYY-MM-DD",
-      "last_contacted_at": ""
-    }
+    "approved": false
   }
 ]
 ```
 
-Use actual ISO dates. Eligibility requires recorded opt-in evidence, approval, and an opt-in or last-contact date within 90 days. If consent is older, enter a real recent `last_contacted_at` date. These fields record your evidence; the app cannot independently establish permission. The supplied example is deliberately ineligible and cannot accidentally send.
+### Manually approve or disapprove recipients
+
+Open `contacts.json` in a text editor and review each email address:
+
+- Set `"approved": true` to include that contact for sending, subject to suppression, duplicate, and sending-limit checks.
+- Set `"approved": false` to skip that contact. You do not need to delete the entry.
+
+Use the lowercase JSON values `true` and `false` without quotation marks. Save the file, then run `node app.mjs preview` to check the eligible recipients and messages without sending. Changing approval does not itself send an email; sending requires the separate `send --confirm` command.
+
+New scraped addresses default to `approved: false`. If an address is found again, the scraper preserves its existing approval value and reviewed details. There is no approval interface; the company currently manages these choices directly in `contacts.json`.
+
+Approval records an internal company decision, not recipient consent. The current sender does not validate consent records or dates. The company must independently establish permission and follow its sending provider's requirements before approving a recipient. Remove any leftover fake example recipient before using a real contact list.
 
 From a terminal in the project folder:
 
@@ -58,15 +63,39 @@ Preview makes no network calls to SMTP2GO and needs no real API key. The second 
 
 ## Public contact discovery
 
-Put public HTTPS page URLs in `sites.txt`, one per line, then run:
+Put public HTTPS page URLs in `public-email-finder/sites.txt`, one per line, then run:
 
 ```powershell
 node app.mjs discover
 ```
 
-The tool fetches only those explicit pages, checks `robots.txt`, and extracts visible/plainly embedded email addresses with their source URLs and timestamps to `data/discovered.json`. It skips LinkedIn, private networks, denied robots rules, login/redirect pages, and non-text responses. It waits three seconds between pages. It does not search the entire web, render JavaScript pages, guess addresses, check mailbox existence, or bypass site restrictions. Check each site's terms before adding it.
+The integrated crawler follows same-site links, checks `robots.txt`, and merges discovered emails and their source URLs directly into this project's `contacts.json`. It deduplicates addresses and preserves existing names, approval, and notes. New contacts have `approved: false`. There is no separate `results.json` output and no integration-example step is required.
 
-**SMTP2GO's [terms](https://www.smtp2go.com/terms/) prohibit scraped mailing lists, including LinkedIn leads.** Discovery results never automatically enter the sending list. A public address does not establish opt-in; only use `contacts.json` for independently permitted, opted-in recipients.
+The equivalent direct command is `node public-email-finder/scraper.mjs --file public-email-finder/sites.txt`. For a different website list, use `node app.mjs discover --file path/to/sites.txt`. An API key is not needed for discovery. The crawler follows page/depth limits and skips private networks, denied robots rules, and access challenges. See `public-email-finder/README.md` for details.
+
+**SMTP2GO's [terms](https://www.smtp2go.com/terms/) prohibit scraped mailing lists, including LinkedIn leads.** New discovered records are saved for review and remain ineligible while `approved` is false. A public address does not establish opt-in. The sender checks approval, suppressions, prior attempts, and sending limits; it does not verify consent.
+
+## Local scraper integration example
+
+Run the scraper-to-contact-to-template workflow without an API key or sending:
+
+```powershell
+node integration-demo.mjs
+```
+
+This uses the actual crawler in the `public-email-finder` subfolder with its built-in fictional pages. It discovers three addresses, converts them into the contact format, and renders the message from this project's `template.json` using the same template renderer as the sender. It performs no external network requests.
+
+To try the conversion with previously saved scraper results:
+
+```powershell
+node integration-demo.mjs --results contacts.json
+```
+
+Both commands write `data/integration-demo.json` with converted `contacts`, rendered `previews`, import counts, and eligibility-check results. Only the first three previews appear in the terminal; all are saved in the JSON file. Imported records are deduplicated, source URLs are preserved, and new records have `approved: false`. The previews demonstrate formatting even though the real sender's eligibility check skips those unapproved contacts.
+
+The optional example does not load `.env`, write to `contacts.json`, update sending logs, or call the email-sending functions. It does not infer names or manufacture consent evidence. For normal discovery, edit `public-email-finder/sites.txt`; the old top-level `sites.txt` is only used if explicitly supplied with `--file`. A custom demo `--out` file must be named `integration-demo.json`.
+
+Implementation: `integration-demo.mjs` orchestrates the example; `lib/scraper-integration.mjs` converts scraper records and creates the previews. The normal `node app.mjs preview` and `send` commands still use the existing `contacts.json`.
 
 ## Limits, logs, and suppression
 
@@ -84,4 +113,4 @@ npm test
 
 Tests use simulated SMTP2GO responses and temporary local data. They do not send real email. Actual delivery still requires a verified account, a key, and an internal delivery test.
 
-Share `app.mjs`, `lib/`, `package.json`, `contacts.json` (empty or example data), `template.json`, `sites.txt`, `.env.example`, `.gitignore`, `test/`, and this README. Exclude your configured `.env` and `data/`. The API key is a private company credential.
+Share `app.mjs`, `lib/`, `public-email-finder/` (excluding old exports), `package.json`, `contacts.json` (empty or example data), `template.json`, `.env.example`, `.gitignore`, `test/`, and this README. Exclude your configured `.env` and `data/`. The API key is a private company credential.

@@ -1,3 +1,2 @@
 # Add one public HTTPS page URL per line, for example:
 # https://your-business-website.com/contact
-# Discovery records are saved separately and are not approved recipients.

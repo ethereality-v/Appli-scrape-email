@@ -1,0 +1,8 @@
+# Default public contact pages for trying the scraper.
+# Add more website URLs below, one per line. You may remove these defaults.
+# Full HTTPS URLs and plain domain names both work. Lines starting with # are ignored.
+
+https://www.python.org/about/help/
+https://www.postgresql.org/about/contact/
+
+# Add your own websites below:

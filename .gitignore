@@ -1,4 +1,5 @@
 .env
 data/
+contacts.json.*.tmp
 node_modules/
 *.zip
