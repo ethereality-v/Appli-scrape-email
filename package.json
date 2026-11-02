@@ -1,0 +1,14 @@
+{
+  "name": "company-email-outreach",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node app.mjs",
+    "preview": "node app.mjs preview",
+    "send": "node app.mjs send",
+    "discover": "node app.mjs discover",
+    "test": "node --test"
+  }
+}
